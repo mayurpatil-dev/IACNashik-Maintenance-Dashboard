@@ -7,18 +7,6 @@
   </head>
   <body>
     <div id="root"></div>
-
-    <!-- Load React and ReactDOM from CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Your App Code -->
-    <script type="text/babel">
-      import Page from "./src/app/page.jsx";
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<Page />);
-    </script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -1,12 +1,12 @@
 {
   "builds": [
     {
-      "src": "createxyz-project/apps/web/package.json",
+      "src": "apps/web/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "createxyz-project/apps/web/build/client" }
+      "config": { "distDir": "apps/web/build/client" }
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
