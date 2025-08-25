@@ -110,6 +110,33 @@
 .hover-lift:nth-child(7) { animation-delay: 0.7s; }
 .hover-lift:nth-child(8) { animation-delay: 0.8s; }
 
+/* Add this to your background.css or component styles */
+.recharts-tooltip-wrapper {
+  z-index: 9999 !important;
+  pointer-events: none !important;
+}
+
+.recharts-wrapper {
+  overflow: visible !important;
+}
+
+.glass-card {
+  overflow: visible !important;
+  position: relative;
+}
+
+/* Ensure charts container doesn't clip tooltips */
+.grid {
+  overflow: visible !important;
+}
+
+/* Responsive tooltip positioning */
+@media (max-width: 1024px) {
+  .recharts-tooltip-wrapper {
+    transform: translateX(-50%) !important;
+  }
+}
+
 /* Glow text effect */
 .glow-text {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);

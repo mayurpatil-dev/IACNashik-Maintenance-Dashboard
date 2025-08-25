@@ -358,44 +358,84 @@ const maxYAxisValue = Math.ceil(maxBreakdownCount / 5) * 5;
 // Remove unused yAxisTicks declaration since the ticks are calculated directly in the YAxis components
     
     // Row 1: Bar charts (Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D)
-    const barCharts = [
-      {
-        title: "Overall Plant B/D",
-        data: weeklyData.map(item => ({
-          name: item.week,
-          IMM: item.IMM,
-          SPM: item.SPM,
-          ASSY: item.ASSY,
-          
-        })),
-        key: "overall-bd"
-      },
-      {
-        title: "IMM B/D",
-        data: weeklyData.map(item => ({
-          name: item.week,
-          value: item.IMM
-        })),
-        key: "imm-bd"
-      },
-      {
-        title: "SPM B/D",
-        data: weeklyData.map(item => ({
-          name: item.week,
-          value: item.SPM
-        })),
-        key: "spm-bd"
-      },
+    // Row 1: Bar charts (Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D)
+const barCharts = [
+  {
+    title: "Overall Plant B/D",
+    data: weeklyData.map(item => ({
+      name: item.week,
+      value: item.IMM + item.SPM + item.ASSY, // Single combined value
+      IMM: item.IMM,
+      SPM: item.SPM,
+      ASSY: item.ASSY
+    })),
+    key: "overall-bd",
+    isOverallChart: true // Add flag to identify this chart
+  },
+  {
+    title: "IMM B/D",
+    data: weeklyData.map(item => ({
+      name: item.week,
+      value: item.IMM
+    })),
+    key: "imm-bd"
+  },
+  {
+    title: "SPM B/D",
+    data: weeklyData.map(item => ({
+      name: item.week,
+      value: item.SPM
+    })),
+    key: "spm-bd"
+  },
+  {
+    title: "ASSY B/D",
+    data: weeklyData.map(item => ({
+      name: item.week,
+      value: item.ASSY
+    })),
+    key: "assy-bd"
+  }
+];
 
-      {
-        title: "ASSY B/D",
-        data: weeklyData.map(item => ({
-          name: item.week,
-          value: item.ASSY
-        })),
-        key: "assy-bd"
-      }
-    ];
+    // const barCharts = [
+    //   {
+    //     title: "Overall Plant B/D",
+    //     data: weeklyData.map(item => ({
+    //       name: item.week,
+    //       IMM: item.IMM,
+    //       SPM: item.SPM,
+    //       ASSY: item.ASSY,
+          
+    //     })),
+    //     key: "overall-bd"
+    //   },
+    //   {
+    //     title: "IMM B/D",
+    //     data: weeklyData.map(item => ({
+    //       name: item.week,
+    //       value: item.IMM
+    //     })),
+    //     key: "imm-bd"
+    //   },
+    //   {
+    //     title: "SPM B/D",
+    //     data: weeklyData.map(item => ({
+    //       name: item.week,
+    //       value: item.SPM
+    //     })),
+    //     key: "spm-bd"
+    //   },
+
+    //   {
+    //     title: "ASSY B/D",
+    //     data: weeklyData.map(item => ({
+    //       name: item.week,
+    //       value: item.ASSY
+    //     })),
+    //     key: "assy-bd"
+    //   }
+    // ];
 
     // Row 2: Line charts (Overall MTTR, IMM MTTR, SPM MTTR, ASSY MTTR)
     const lineCharts = [
@@ -632,61 +672,116 @@ pieCharts.push({
         {sheetData.length > 0 && (
           <div className="space-y-8 mb-6">
             {/* Row 1: Bar Charts - Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D */}
-            <div className="mb-2">
-              <h2 className="text-xl font-semibold text-white mb-4 glow-text">Breakdown Data</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {barCharts.map((chart, index) => (
-                  <div
-                    key={chart.key}
-                    className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift"
-                  >
-                    <div className="flex items-center gap-2 mb-3">
-                      <BarChart3 className="w-4 h-4 text-[#A0AEC0]" />
-                      <h3 className="text-sm font-semibold text-white glow-text">
-                        {chart.title}
-                      </h3>
-                    </div>
-                    <ResponsiveContainer width="100%" height={180}>
-                      {index === 0 ? (
-                        <RechartsBarChart data={chart.data}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
-                          <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-                          <YAxis 
-                            tick={{fill: '#A0AEC0', fontSize: 10}} 
-                            domain={[0, yAxisMax]} 
-                            ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))} 
-                          />
-                          <Tooltip 
-                          contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '6px', color: '#E2E8F0' }}
-                          formatter={(value, name) => [`${Math.round(value)}`, name]}
-                        />
-                          <Legend wrapperStyle={{fontSize: '10px', color: '#A0AEC0'}} />
-                          <Bar dataKey="IMM" name="IMM" fill="#60A5FA" barSize={20} />
-                          <Bar dataKey="SPM" name="SPM" fill="#34D399" barSize={20} />
-                          <Bar dataKey="ASSY" name="ASSY" fill="#FBBF24" barSize={20} />
-                         
-                        </RechartsBarChart>
-                      ) : (
-                        <RechartsBarChart data={chart.data}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
-                          <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-                          <YAxis 
-                            tick={{fill: '#A0AEC0', fontSize: 10}} 
-                            domain={[0, yAxisMax]} 
-                            ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))} 
-                          />
-                          <Tooltip 
-                          contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '6px', color: '#E2E8F0' }}
-                          formatter={(value, name) => [`${Math.round(value)}`, name]}
-                        />
-                          <Bar dataKey="value" fill={COLORS[index % COLORS.length]} barSize={20} />
-                        </RechartsBarChart>
-                      )}
-                    </ResponsiveContainer>
-                  </div>
-                ))}
+<div className="mb-2">
+  <h2 className="text-xl font-semibold text-white mb-4 glow-text">Breakdown Data</h2>
+  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+    {barCharts.map((chart, index) => (
+      <div
+        key={chart.key}
+        className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 className="w-4 h-4 text-[#A0AEC0]" />
+          <h3 className="text-sm font-semibold text-white glow-text">
+            {chart.title}
+          </h3>
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+  {chart.isOverallChart ? (
+    // Single bar chart for Overall Plant B/D
+    <RechartsBarChart data={chart.data}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
+      <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
+      <YAxis
+        tick={{fill: '#A0AEC0', fontSize: 10}}
+        domain={[0, yAxisMax]}
+        ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))}
+      />
+      <Tooltip
+        contentStyle={{
+          backgroundColor: '#2D3748',
+          border: '1px solid #4A5568',
+          borderRadius: '6px',
+          color: '#E2E8F0',
+          fontSize: '12px',
+          padding: '8px 12px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          zIndex: 9999,
+          maxWidth: '200px'
+        }}
+        wrapperStyle={{
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}
+        position={{ x: undefined, y: undefined }}
+        allowEscapeViewBox={{ x: false, y: false }}
+        content={({ active, payload, label }) => {
+          if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+              <div style={{
+                backgroundColor: '#2D3748',
+                border: '1px solid #4A5568',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                fontSize: '12px',
+                color: '#E2E8F0',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                maxWidth: '180px'
+              }}>
+                <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>{label}</p>
+                <p style={{ margin: '2px 0', color: '#60A5FA' }}>
+                  Total: {data.IMM + data.SPM + data.ASSY}
+                </p>
+                <div style={{ fontSize: '11px', color: '#A0AEC0' }}>
+                  <div>IMM: {data.IMM}</div>
+                  <div>SPM: {data.SPM}</div>
+                  <div>ASSY: {data.ASSY}</div>
+                </div>
               </div>
-            </div>
+            );
+          }
+          return null;
+        }}
+      />
+      <Bar dataKey="value" fill="#60A5FA" barSize={20} />
+    </RechartsBarChart>
+  ) : (
+    // Individual charts for IMM, SPM, ASSY
+    <RechartsBarChart data={chart.data}>
+      <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
+      <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
+      <YAxis
+        tick={{fill: '#A0AEC0', fontSize: 10}}
+        domain={[0, yAxisMax]}
+        ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))}
+      />
+      <Tooltip
+        contentStyle={{
+          backgroundColor: '#2D3748',
+          border: '1px solid #4A5568',
+          borderRadius: '6px',
+          color: '#E2E8F0',
+          fontSize: '12px',
+          padding: '6px 10px',
+          zIndex: 9999
+        }}
+        wrapperStyle={{
+          zIndex: 9999,
+          pointerEvents: 'none'
+        }}
+        formatter={(value, name) => [`${Math.round(value)}`, name]}
+      />
+      <Bar dataKey="value" fill={COLORS[index % COLORS.length]} barSize={20} />
+    </RechartsBarChart>
+  )}
+</ResponsiveContainer>
+
+      </div>
+    ))}
+  </div>
+</div>
+
 
             {/* Row 2: Line Charts - Overall MTTR, IMM MTTR, SPM MTTR, ASSY MTTR */}
             <div className="mb-2">

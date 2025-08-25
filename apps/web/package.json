@@ -3,9 +3,12 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "react-router dev",
-		"typecheck": "react-router typegen && tsc --noEmit"
-	},
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview",
+  "typecheck": "tsc --noEmit"
+},
+"vercel-build": "npm run build",
 	"dependencies": {
 		"@auth/core": "^0.37.2",
 		"@babel/generator": "^7.27.1",
