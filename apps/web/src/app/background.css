@@ -1,0 +1,185 @@
+/* Dark animated background styles */
+
+/* Base dark theme */
+.animated-bg {
+  position: relative;
+  overflow: hidden;
+  color: white;
+  background-color: #121212;
+  animation: fadeIn 1s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Animated gradient background */
+.animated-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(125deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+  background-size: 400% 400%;
+  opacity: 0.7;
+  animation: gradient 15s ease infinite;
+  z-index: 1;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animated particles */
+.animated-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+.animated-particles::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(#ffffff33 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  animation: particles 120s linear infinite;
+}
+
+@keyframes particles {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-1000px); }
+}
+
+/* Glass card effect */
+.glass-card {
+  backdrop-filter: blur(10px);
+  background-color: transparent;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  animation: slideIn 0.6s ease-out, float 6s ease-in-out infinite;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeInUp 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.hover-lift:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Staggered animation for charts */
+.hover-lift:nth-child(1) { animation-delay: 0.1s; }
+.hover-lift:nth-child(2) { animation-delay: 0.2s; }
+.hover-lift:nth-child(3) { animation-delay: 0.3s; }
+.hover-lift:nth-child(4) { animation-delay: 0.4s; }
+.hover-lift:nth-child(5) { animation-delay: 0.5s; }
+.hover-lift:nth-child(6) { animation-delay: 0.6s; }
+.hover-lift:nth-child(7) { animation-delay: 0.7s; }
+.hover-lift:nth-child(8) { animation-delay: 0.8s; }
+
+/* Glow text effect */
+.glow-text {
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  transition: text-shadow 0.3s ease;
+}
+
+.glow-text:hover {
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+}
+
+/* Glow button effect */
+.glow-button {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(74, 85, 104, 0.5);
+  transition: all 0.3s ease;
+  animation: pulse 2s infinite;
+}
+
+.glow-button:hover {
+  box-shadow: 0 0 15px rgba(74, 85, 104, 0.8);
+  animation: none;
+}
+
+.glow-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: rotate(30deg);
+  animation: glow-sweep 3s linear infinite;
+}
+
+@keyframes glow-sweep {
+  0% { transform: rotate(30deg) translateX(-100%); }
+  100% { transform: rotate(30deg) translateX(100%); }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 10px rgba(74, 85, 104, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(96, 165, 250, 0.7); }
+  100% { box-shadow: 0 0 10px rgba(74, 85, 104, 0.5); }
+}
+
+/* Update other component styles for dark theme */
+table {
+  color: #e2e8f0;
+  background-color: rgba(26, 32, 44, 0.7);
+}
+
+thead tr {
+  background-color: rgba(45, 55, 72, 0.7) !important;
+}
+
+tbody tr:nth-child(even) {
+  background-color: rgba(45, 55, 72, 0.3) !important;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: rgba(26, 32, 44, 0.5) !important;
+}
+
+tbody tr:hover {
+  background-color: rgba(74, 85, 104, 0.5) !important;
+}
+
+th, td {
+  color: #e2e8f0;
+  border-color: rgba(74, 85, 104, 0.3) !important;
+}
