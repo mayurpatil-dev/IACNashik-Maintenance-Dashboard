@@ -1,12 +1,11 @@
 {
   "builds": [
     {
-      "src": "apps/web/package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "apps/web/build/client" }
+      "src": "apps/web/__create/index.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "apps/web/__create/index.ts" }
   ]
 }
