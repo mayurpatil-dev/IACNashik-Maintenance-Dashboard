@@ -4,21 +4,10 @@
     {
       "src": "apps/web/package.json",
       "use": "@vercel/static-build"
-    },
-    {
-      "src": "apps/web/api/**/*.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "outputDirectory": "apps/web/build/client"
 }
