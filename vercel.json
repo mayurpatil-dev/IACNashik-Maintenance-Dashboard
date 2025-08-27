@@ -8,6 +8,5 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "outputDirectory": "apps/web/build/client"
+  ]
 }
