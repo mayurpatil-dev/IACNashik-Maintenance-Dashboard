@@ -87,12 +87,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'build/client',  // ✅ match your actual folder
+    outDir: 'build/client',
     emptyOutDir: true,
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-      },
+      input: resolve(__dirname, 'index.html'),  // no object wrapper
     },
   },
 });
