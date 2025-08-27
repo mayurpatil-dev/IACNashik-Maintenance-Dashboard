@@ -1,11 +1,7 @@
 {
-  "builds": [
-    {
-      "src": "apps/web/__create/index.ts",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "apps/web/__create/index.ts" }
-  ]
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
+  "installCommand": "pnpm install",
+  "devCommand": "pnpm dev",
+  "root": "apps/web"
 }
