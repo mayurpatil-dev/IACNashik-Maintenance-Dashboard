@@ -12,6 +12,7 @@ import { restart } from "./plugins/restart";
 import { restartEnvFileChange } from "./plugins/restartEnvFileChange";
 
 export default defineConfig({
+  root: ".", // root is apps/web (where index.html is)
   envPrefix: "NEXT_PUBLIC_",
   optimizeDeps: {
     include: ["fast-glob", "lucide-react"],
@@ -82,7 +83,7 @@ export default defineConfig({
     outDir: "build/client",
     emptyOutDir: true,
     rollupOptions: {
-      input: resolve(__dirname, "index.html"),
+      input: resolve(__dirname, "index.html"), // use apps/web/index.html
     },
   },
 });
