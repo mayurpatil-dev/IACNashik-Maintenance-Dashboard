@@ -1,7 +1,7 @@
-import React from "react";
+import React from "react";          // ✅ Add this explicitly
 import { createRoot } from "react-dom/client";
-import Page from "./app/page.jsx"; // your main page component
+import App from "./app/page.jsx";   // your dashboard component
 
 const container = document.getElementById("root");
 const root = createRoot(container);
-root.render(<Page />);
+root.render(<App />);
