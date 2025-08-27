@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   useQuery,
   QueryClient,
@@ -13,28 +13,101 @@ import {
   BarChart3,
   PieChart,
 } from "lucide-react";
-// Removed Papa import as it's no longer needed
-import "./background.css";
 import {
   PieChart as RechartsPieChart,
   Cell,
   ResponsiveContainer,
   BarChart as RechartsBarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   Pie,
-  LineChart,
-  Line,
 } from "recharts";
 
-// We're not using mock data anymore as per user's request
-// The application will only use actual spreadsheet data
-
 const queryClient = new QueryClient();
+
+// Background styles
+const backgroundStyles = `
+.animated-bg {
+  background: linear-gradient(45deg, #0f172a, #1e293b, #334155);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.animated-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, #1e40af20, #7c3aed20, #059669-20);
+  opacity: 0.3;
+  animation: gradientMove 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.animated-particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(96, 165, 250, 0.3), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(52, 211, 153, 0.3), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(251, 191, 36, 0.3), transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(167, 139, 250, 0.3), transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: particleMove 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes gradientMove {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(30px, -30px) rotate(120deg); }
+  66% { transform: translate(-20px, 20px) rotate(240deg); }
+}
+
+@keyframes particleMove {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-200px, -100px); }
+}
+
+.glass-card {
+  backdrop-filter: blur(10px);
+  background: rgba(26, 32, 44, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
+}
+
+.glow-button:hover {
+  box-shadow: 0 0 20px rgba(96, 165, 250, 0.4);
+}
+
+.hover-lift {
+  transition: transform 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+`;
 
 function LiveDataDashboard() {
   const [countdown, setCountdown] = useState(30);
@@ -58,20 +131,16 @@ function LiveDataDashboard() {
       const json = await res.json();
       return json.data || [];
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
     refetchIntervalInBackground: true,
-    staleTime: 0, // Always consider data stale to ensure fresh fetches
+    staleTime: 0,
+    retry: 3,
   });
 
   // Countdown timer for next refresh
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          return 30; // Reset countdown
-        }
-        return prev - 1;
-      });
+      setCountdown((prev) => (prev <= 1 ? 30 : prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
@@ -80,14 +149,11 @@ function LiveDataDashboard() {
   // Reset countdown when data updates and handle errors
   useEffect(() => {
     setCountdown(30);
-    
-    // Clear error message when data updates successfully
     if (dataUpdatedAt) {
       setErrorMessage("");
     }
   }, [dataUpdatedAt]);
-  
-  // Handle error state
+
   useEffect(() => {
     if (error) {
       setErrorMessage(error.message || "Failed to fetch spreadsheet data");
@@ -128,58 +194,51 @@ function LiveDataDashboard() {
 
   // Function to determine week number based on day of month
   const getWeekFromDate = (dateString) => {
-    // If dateString is not a valid date string, return null
     if (!dateString || typeof dateString !== 'string') return null;
     
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return null; // Invalid date
+      if (isNaN(date.getTime())) return null;
       
       const day = date.getDate();
       
-      // Assign week based on day of month
       if (day <= 7) return 'Week 1';
       if (day <= 14) return 'Week 2';
       if (day <= 21) return 'Week 3';
       if (day <= 28) return 'Week 4';
-      return 'Week 5'; // For days 29-31
+      return 'Week 5';
     } catch (error) {
       console.error('Error parsing date:', error);
       return null;
     }
   };
 
-  // Chart data processing for the specific layout requested
+  // Chart data processing
   const processDataForCharts = (data) => {
     if (!data || data.length === 0) return { 
       barCharts: [],
       lineCharts: [],
-      mtbfChart: null,
-      pieCharts: []
+      mtbfChart: { title: "MTBF Trend", data: [], key: "mtbf-trend" },
+      pieCharts: [],
+      yAxisMax: 10
     };
     
     // Process data by calendar weeks
-    // Group data by weeks based on date field
     const processedData = data.reduce((acc, item) => {
-      // Try to find date field - could be 'date', 'DATE', 'Date', etc.
       const dateField = Object.keys(item).find(key => 
         key.toLowerCase() === 'date' || 
         (typeof item[key] === 'string' && item[key].match(/^\d{4}-\d{2}-\d{2}/))
       );
       
       const week = dateField ? getWeekFromDate(item[dateField]) : null;
-      
-      // If we can't determine the week, skip this item
       if (!week) return acc;
       
-      // Initialize week data if it doesn't exist
       if (!acc[week]) {
         acc[week] = {
           week,
           IMM: 0,
           SPM: 0,
           ASSY: 0,
-
           IMM_downtime: 0,
           SPM_downtime: 0,
           ASSY_downtime: 0,
@@ -187,17 +246,15 @@ function LiveDataDashboard() {
           SPM_uptime: 0,
           ASSY_uptime: 0,
           causes: {},
-           causesByCategory: { IMM: {}, SPM: {}, ASSY: {} },
+          causesByCategory: { IMM: {}, SPM: {}, ASSY: {} },
         };
       }
       
-      // Determine machine category (IMM, SPM, ASSY)
       let category = null;
       const machineCategoryField = Object.keys(item).find(key => 
-        key === 'Machine↵Category' || key.toLowerCase().includes('machine category') || key.toLowerCase().includes('category')
-      );
-      const machineNameField = Object.keys(item).find(key => 
-        key.toLowerCase() === 'machine name'
+        key === 'Machine↵Category' || 
+        key.toLowerCase().includes('machine category') || 
+        key.toLowerCase().includes('category')
       );
 
       if (machineCategoryField && item[machineCategoryField]) {
@@ -205,78 +262,85 @@ function LiveDataDashboard() {
         if (category === 'ASSLY') {
           category = 'ASSY';
         }
-      } else if (machineNameField && item[machineNameField]) {
-        // Fallback to machine name if category is not found, but this might not be reliable for categorization
-        category = item[machineNameField].toUpperCase();
       }
-      console.log("Machine Category Field:", machineCategoryField);
-      console.log("Determined Category:", category);
-
       
-      // Count breakdowns by category
-      
-      // Determine if the entry is a breakdown
       const breakdownTypeField = Object.keys(item).find(key =>
         key.toLowerCase().includes('service request / breakdown') ||
-        key.toLowerCase().includes('breakdown type')
+        key.toLowerCase().includes('breakdown type') ||
+        key.toLowerCase().includes('category (service request / breakdown)')
       );
-      const isBreakdown = breakdownTypeField && item[breakdownTypeField].toLowerCase() === 'breakdown';
-
-      console.log("Processing item:", item);
-      console.log("Item keys:", Object.keys(item));
-      console.log("Machine Category Raw Value:", item["Machine↵Category"]);
-      console.log("Identified category:", category);
-      console.log("Is breakdown:", isBreakdown);
+      const isBreakdown = breakdownTypeField && 
+        item[breakdownTypeField].toLowerCase().includes('breakdown');
 
       if (category && isBreakdown) {
-        if (category.includes('IMM')) acc[week].IMM++;
-        else if (category.includes('SPM')) acc[week].SPM++;
-        else if (category.includes('ASSY')) acc[week].ASSY++;
+        if (category.includes('IMM')) {
+          acc[week].IMM++;
+        } else if (category.includes('SPM')) {
+          acc[week].SPM++;
+        } else if (category.includes('ASSY')) {
+          acc[week].ASSY++;
+        }
         
-      }
-      
-      // Accumulate downtime for MTTR calculation
-      const downtimeField = Object.keys(item).find(key => 
-        key.toLowerCase().includes('downtime') || 
-        key.toLowerCase().includes('repair time')
-      );
-      
-     if (downtimeField && category && isBreakdown) {
-        const downtime = parseFloat(item[downtimeField]) || 0;
-        if (category.includes('IMM')) acc[week].IMM_downtime += downtime;
-        else if (category.includes('SPM')) acc[week].SPM_downtime += downtime;
-        else if (category.includes('ASSY')) acc[week].ASSY_downtime += downtime;
-      }
-      
-      // Accumulate uptime for MTBF calculation
-      const uptimeField = Object.keys(item).find(key => 
-        key.toLowerCase().includes('uptime') || 
-        key.toLowerCase().includes('operating time')
-      );
-      
-     if (uptimeField && category && isBreakdown) {
-        const uptime = parseFloat(item[uptimeField]) || 0;
-        if (category.includes('IMM')) acc[week].IMM_uptime += uptime;
-        else if (category.includes('SPM')) acc[week].SPM_uptime += uptime;
-        else if (category.includes('ASSY')) acc[week].ASSY_uptime += uptime;
-      }
-      
-      // Count breakdown causes for pie charts
-      const causeField = Object.keys(item).find(key =>
-  key.toLowerCase().includes('cause') ||
-  key.toLowerCase().includes('reason') ||
-  key.toLowerCase().includes('failure') ||
-  key.toLowerCase().includes('downtime category') // 👈 added for your sheet
-);
+        const downtimeField = Object.keys(item).find(key => {
+  const lowerKey = key.toLowerCase();
+  return (
+    (lowerKey.includes("total down time") ||   // ✅ exact match for your sheet
+     lowerKey.includes("repair time") ||
+     lowerKey.includes("bd time") ||
+     lowerKey.includes("breakdown time") ||
+     lowerKey.includes("downtime")) &&
+    !lowerKey.includes("category")             // 🚫 avoid DOWNTIME CATEGORY
+  );
+});
 
-      
-      if (causeField && item[causeField]) {
-        const cause = item[causeField];
-        if (!acc[week].causes[cause]) acc[week].causes[cause] = 0;
-        acc[week].causes[cause]++;
 
-        // Category-level
-        if (category && isBreakdown) {
+if (downtimeField) {
+  const downtime = parseFloat(item[downtimeField]) || 0;
+
+  // 👇 Debug log
+  console.log("Parsed downtime:", downtime, "from field:", downtimeField, "row:", item);
+
+  if (category.includes('IMM')) {
+    acc[week].IMM_downtime += downtime;
+  } else if (category.includes('SPM')) {
+    acc[week].SPM_downtime += downtime;
+  } else if (category.includes('ASSY')) {
+    acc[week].ASSY_downtime += downtime;
+  }
+} else {
+  // 👇 Debug log if no field found
+  console.warn("No downtime field found in row:", item);
+}
+
+        
+        const uptimeField = Object.keys(item).find(key => 
+          key.toLowerCase().includes('uptime') || 
+          key.toLowerCase().includes('operating time')
+        );
+        
+        if (uptimeField) {
+          const uptime = parseFloat(item[uptimeField]) || 0;
+          if (category.includes('IMM')) {
+            acc[week].IMM_uptime += uptime;
+          } else if (category.includes('SPM')) {
+            acc[week].SPM_uptime += uptime;
+          } else if (category.includes('ASSY')) {
+            acc[week].ASSY_uptime += uptime;
+          }
+        }
+        
+        const causeField = Object.keys(item).find(key =>
+          key.toLowerCase().includes('cause') ||
+          key.toLowerCase().includes('reason') ||
+          key.toLowerCase().includes('failure') ||
+          key.toLowerCase().includes('downtime category')
+        );
+        
+        if (causeField && item[causeField]) {
+          const cause = item[causeField];
+          if (!acc[week].causes[cause]) acc[week].causes[cause] = 0;
+          acc[week].causes[cause]++;
+
           if (category.includes("IMM")) {
             acc[week].causesByCategory.IMM[cause] =
               (acc[week].causesByCategory.IMM[cause] || 0) + 1;
@@ -286,7 +350,6 @@ function LiveDataDashboard() {
           } else if (category.includes("ASSY")) {
             acc[week].causesByCategory.ASSY[cause] =
               (acc[week].causesByCategory.ASSY[cause] || 0) + 1;
-          
           }
         }
       }
@@ -294,36 +357,18 @@ function LiveDataDashboard() {
       return acc;
     }, {});
     
-    // Convert to array and calculate MTTR and MTBF
     const weeklyData = Object.values(processedData).map(week => {
-      // Calculate MTTR (Mean Time To Repair) = total downtime / number of breakdowns
-      // Only calculate for breakdown data, not service data
-      // Using sample data for testing if no real data is available
-      const IMM_MTTR = week.IMM > 0 ? Math.max(week.IMM_downtime / week.IMM, 15) : 15;
-      const SPM_MTTR = week.SPM > 0 ? Math.max(week.SPM_downtime / week.SPM, 20) : 20;
-      const ASSY_MTTR = week.ASSY > 0 ? Math.max(week.ASSY_downtime / week.ASSY, 25) : 25;
+      const IMM_MTTR = week.IMM > 0 ? (week.IMM_downtime / week.IMM) : 0;
+      const SPM_MTTR = week.SPM > 0 ? (week.SPM_downtime / week.SPM) : 0;
+      const ASSY_MTTR = week.ASSY > 0 ? (week.ASSY_downtime / week.ASSY) : 0;
+
       const totalBreakdowns = week.IMM + week.SPM + week.ASSY;
       const totalDowntime = week.IMM_downtime + week.SPM_downtime + week.ASSY_downtime;
-      const MTTR = totalBreakdowns > 0 ? Math.max(totalDowntime / totalBreakdowns, 30) : 30;
-      
-      // Calculate MTBF (Mean Time Between Failures) = uptime / number of breakdowns
+      const MTTR = totalBreakdowns > 0 ? (totalDowntime / totalBreakdowns) : 0;
+
       const totalUptime = week.IMM_uptime + week.SPM_uptime + week.ASSY_uptime;
-      // Using sample data for testing if no real data is available
-      const MTBF = totalBreakdowns > 0 ? Math.max(totalUptime / totalBreakdowns, 120) : 120;
-      
-      // Format values for display in tooltips
-      const IMM_MTTR_formatted = `${Math.round(IMM_MTTR)} min/BD`;
-      const SPM_MTTR_formatted = `${Math.round(SPM_MTTR)} min/BD`;
-      const ASSY_MTTR_formatted = `${Math.round(ASSY_MTTR)} min/BD`;
-      const MTTR_formatted = `${Math.round(MTTR)} min/BD`;
-      const MTBF_formatted = `${Math.round(MTBF)} min/BD`;
-      
-      // Get top 3 breakdown causes
-      const sortedCauses = Object.entries(week.causes)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([name, value]) => ({ name, value }));
-      
+      const MTBF = totalBreakdowns > 0 ? (totalUptime / totalBreakdowns) : 0;
+
       return {
         ...week,
         IMM_MTTR,
@@ -331,113 +376,71 @@ function LiveDataDashboard() {
         ASSY_MTTR,
         MTTR,
         MTBF,
-        IMM_MTTR_formatted,
-        SPM_MTTR_formatted,
-        ASSY_MTTR_formatted,
-        MTTR_formatted,
-        MTBF_formatted,
-        topCauses: sortedCauses
+        IMM_MTTR_formatted: `${IMM_MTTR.toFixed(2)} min/BD`,
+        SPM_MTTR_formatted: `${SPM_MTTR.toFixed(2)} min/BD`,
+        ASSY_MTTR_formatted: `${ASSY_MTTR.toFixed(2)} min/BD`,
+        MTTR_formatted: `${MTTR.toFixed(2)} min/BD`,
+        MTBF_formatted: `${MTBF.toFixed(2)} min/BD`,
       };
     });
-    
-    // Sort by week
+
     weeklyData.sort((a, b) => {
-      const weekA = parseInt(a.week.replace('Week ', ''));
-      const weekB = parseInt(b.week.replace('Week ', ''));
+      const weekA = parseInt(a.week.replace("Week ", ""), 10);
+      const weekB = parseInt(b.week.replace("Week ", ""), 10);
       return weekA - weekB;
     });
-    
-    // Calculate max breakdown count for y-axis scaling
+
     const maxBreakdownCount = Math.max(
-      ...weeklyData.map(item => item.IMM + item.SPM + item.ASSY)
+      ...weeklyData.map(item => item.IMM + item.SPM + item.ASSY),
+      10
     );
-    // Round up to nearest multiple of 5
-    // Calculate y-axis max value for consistent scaling across charts
-// Calculate y-axis max value for consistent scaling across charts
-const maxYAxisValue = Math.ceil(maxBreakdownCount / 5) * 5;
-// Remove unused yAxisTicks declaration since the ticks are calculated directly in the YAxis components
+    const maxYAxisValue = Math.ceil(maxBreakdownCount / 5) * 5;
     
-    // Row 1: Bar charts (Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D)
-    // Row 1: Bar charts (Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D)
-const barCharts = [
-  {
-    title: "Overall Plant B/D",
-    data: weeklyData.map(item => ({
-      name: item.week,
-      value: item.IMM + item.SPM + item.ASSY, // Single combined value
-      IMM: item.IMM,
-      SPM: item.SPM,
-      ASSY: item.ASSY
-    })),
-    key: "overall-bd",
-    isOverallChart: true // Add flag to identify this chart
-  },
-  {
-    title: "IMM B/D",
-    data: weeklyData.map(item => ({
-      name: item.week,
-      value: item.IMM
-    })),
-    key: "imm-bd"
-  },
-  {
-    title: "SPM B/D",
-    data: weeklyData.map(item => ({
-      name: item.week,
-      value: item.SPM
-    })),
-    key: "spm-bd"
-  },
-  {
-    title: "ASSY B/D",
-    data: weeklyData.map(item => ({
-      name: item.week,
-      value: item.ASSY
-    })),
-    key: "assy-bd"
-  }
-];
+    const barCharts = [
+      {
+        title: "Overall Plant B/D",
+        data: weeklyData.map(item => ({
+          name: item.week,
+          value: item.IMM + item.SPM + item.ASSY,
+          IMM: item.IMM,
+          SPM: item.SPM,
+          ASSY: item.ASSY
+        })),
+        key: "overall-bd",
+        isOverallChart: true
+      },
+      {
+        title: "IMM B/D",
+        data: weeklyData.map(item => ({
+          name: item.week,
+          value: item.IMM
+        })),
+        key: "imm-bd"
+      },
+      {
+        title: "SPM B/D",
+        data: weeklyData.map(item => ({
+          name: item.week,
+          value: item.SPM
+        })),
+        key: "spm-bd"
+      },
+      {
+        title: "ASSY B/D",
+        data: weeklyData.map(item => ({
+          name: item.week,
+          value: item.ASSY
+        })),
+        key: "assy-bd"
+      }
+    ];
 
-    // const barCharts = [
-    //   {
-    //     title: "Overall Plant B/D",
-    //     data: weeklyData.map(item => ({
-    //       name: item.week,
-    //       IMM: item.IMM,
-    //       SPM: item.SPM,
-    //       ASSY: item.ASSY,
-          
-    //     })),
-    //     key: "overall-bd"
-    //   },
-    //   {
-    //     title: "IMM B/D",
-    //     data: weeklyData.map(item => ({
-    //       name: item.week,
-    //       value: item.IMM
-    //     })),
-    //     key: "imm-bd"
-    //   },
-    //   {
-    //     title: "SPM B/D",
-    //     data: weeklyData.map(item => ({
-    //       name: item.week,
-    //       value: item.SPM
-    //     })),
-    //     key: "spm-bd"
-    //   },
+    const maxMTTR = Math.max(
+      ...weeklyData.map(item => Math.max(item.MTTR, item.IMM_MTTR, item.SPM_MTTR, item.ASSY_MTTR)),
+      10
+    );
+    const mttrYAxisMax = Math.ceil(maxMTTR / 10) * 10;
 
-    //   {
-    //     title: "ASSY B/D",
-    //     data: weeklyData.map(item => ({
-    //       name: item.week,
-    //       value: item.ASSY
-    //     })),
-    //     key: "assy-bd"
-    //   }
-    // ];
-
-    // Row 2: Line charts (Overall MTTR, IMM MTTR, SPM MTTR, ASSY MTTR)
     const lineCharts = [
       {
         title: "Overall MTTR",
@@ -446,7 +449,8 @@ const barCharts = [
           value: item.MTTR,
           formattedValue: item.MTTR_formatted
         })),
-        key: "overall-mttr"
+        key: "overall-mttr",
+        yAxisMax: mttrYAxisMax
       },
       {
         title: "IMM MTTR",
@@ -455,7 +459,8 @@ const barCharts = [
           value: item.IMM_MTTR,
           formattedValue: item.IMM_MTTR_formatted
         })),
-        key: "imm-mttr"
+        key: "imm-mttr",
+        yAxisMax: mttrYAxisMax
       },
       {
         title: "SPM MTTR",
@@ -464,7 +469,8 @@ const barCharts = [
           value: item.SPM_MTTR,
           formattedValue: item.SPM_MTTR_formatted
         })),
-        key: "spm-mttr"
+        key: "spm-mttr",
+        yAxisMax: mttrYAxisMax
       },
       {
         title: "ASSY MTTR",
@@ -473,11 +479,11 @@ const barCharts = [
           value: item.ASSY_MTTR,
           formattedValue: item.ASSY_MTTR_formatted
         })),
-        key: "assy-mttr"
+        key: "assy-mttr",
+        yAxisMax: mttrYAxisMax
       }
     ];
 
-    // Row 3: MTBF line chart
     const mtbfChart = {
       title: "MTBF Trend",
       data: weeklyData.map(item => ({
@@ -488,108 +494,77 @@ const barCharts = [
       key: "mtbf-trend"
     };
 
-    // Row 4: Pie charts (Top 3 B/D Week 1, Week 2, Week 3)
-    // Row 4: Pie charts (Top 3 B/D Plant, IMM, SPM, ASSY)
-const pieCharts = [];
-
-// 🔹 Plant-level Top 3 by total downtime
-const plantCauses = {};
-sheetData.forEach(item => {
-  const type = (item["CATEGORY (SERVICE REQUEST / BREAKDOWN)"] || "").toUpperCase();
-  if (type === "BREAKDOWN") {
-    const cause = item["DOWNTIME CATEGORY"]?.trim() || "Unknown";
-    const minutes = parseFloat(item["TOTAL DOWN TIME (MIN)"] || 0);
-    plantCauses[cause] = (plantCauses[cause] || 0) + minutes;
-  }
-});
-
-// Remove duplicate declaration and use existing topPlantCauses variable
-// Object.entries(plantCauses)
-//   .sort((a, b) => b[1] - a[1])
-//   .slice(0, 3)
-//   .map(([name, value]) => ({ name, value }));
-
-// pieCharts.push({ title: "Plant Top 3 B/D", data: topPlantCauses, key: "plant-top" });
-
-// 🔹 IMM, SPM, ASSY by downtime
-["IMM", "SPM", "ASSY"].forEach(cat => {
-  const catCauses = {};
-  sheetData.forEach(item => {
-    const type = (item["CATEGORY (SERVICE REQUEST / BREAKDOWN)"] || "").toUpperCase();
-    const category = (item["Machine↵Category"] || "").toUpperCase();
-    if (type === "BREAKDOWN" && category.includes(cat)) {
-      const cause = item["DOWNTIME CATEGORY"]?.trim() || "Unknown";
-      const minutes = parseFloat(item["TOTAL DOWN TIME (MIN)"] || 0);
-      catCauses[cause] = (catCauses[cause] || 0) + minutes;
-    }
-  });
-
-  const topCatCauses = Object.entries(catCauses)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, value]) => ({ name, value }));
-
-  pieCharts.push({ title: `${cat} Top 3 B/D`, data: topCatCauses, key: `${cat.toLowerCase()}-top` });
-});
-
-const topPlantCauses = Object.entries(plantCauses)
-  .sort((a, b) => b[1] - a[1])
-  .slice(0, 3)
-  .map(([name, value]) => ({ name, value }));
-
-pieCharts.push({
-  title: "Plant Top 3 B/D",
-  data: topPlantCauses,
-  key: "plant-top"
-});
-
-
-// IMM, SPM, ASSY → similar logic
-["IMM", "SPM", "ASSY"].forEach(cat => {
-  const catCauses = {};
-  weeklyData.forEach(week => {
-    Object.entries(week.causesByCategory?.[cat] || {}).forEach(([cause, count]) => {
-      catCauses[cause] = (catCauses[cause] || 0) + count;
+    const pieCharts = [];
+    const plantCauses = {};
+    data.forEach(item => {
+      const breakdownTypeField = Object.keys(item).find(key =>
+        key.toLowerCase().includes('service request / breakdown') ||
+        key.toLowerCase().includes('breakdown type') ||
+        key.toLowerCase().includes('category (service request / breakdown)')
+      );
+      const isBreakdown = breakdownTypeField && 
+        item[breakdownTypeField].toLowerCase().includes('breakdown');
+      
+      if (isBreakdown) {
+        const causeField = Object.keys(item).find(key =>
+          key.toLowerCase().includes('cause') ||
+          key.toLowerCase().includes('downtime category')
+        );
+        const downtimeField = Object.keys(item).find(key => 
+          key.toLowerCase().includes('total down time')
+        );
+        
+        if (causeField && downtimeField) {
+          const cause = item[causeField]?.trim() || "Unknown";
+          const minutes = parseFloat(item[downtimeField] || 0);
+          plantCauses[cause] = (plantCauses[cause] || 0) + minutes;
+        }
+      }
     });
-  });
-  const topCatCauses = Object.entries(catCauses)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, value]) => ({ name, value }));
-  pieCharts.push({ title: `${cat} Top 3 B/D`, data: topCatCauses, key: `${cat.toLowerCase()}-top` });
-});
 
-    
-    // Limit to 4 pie charts if we have more
-    if (pieCharts.length > 4) {
-      pieCharts.length = 4;
-    }
+    const topPlantCauses = Object.entries(plantCauses)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, value]) => ({ name, value }));
 
-    console.log("Weekly Data:", weeklyData);
-    console.log("Plant Causes:", plantCauses);
-    console.log("IMM, SPM, ASSY Causes:", { IMM: weeklyData.map(week => week.causesByCategory?.IMM), SPM: weeklyData.map(week => week.causesByCategory?.SPM), ASSY: weeklyData.map(week => week.causesByCategory?.ASSY) });
-    return { barCharts, lineCharts, mtbfChart, pieCharts, yAxisMax : maxYAxisValue };
+    pieCharts.push({
+      title: "Plant Top 3 B/D",
+      data: topPlantCauses,
+      key: "plant-top"
+    });
+
+    ["IMM", "SPM", "ASSY"].forEach(cat => {
+      const catCauses = {};
+      weeklyData.forEach(week => {
+        Object.entries(week.causesByCategory?.[cat] || {}).forEach(([cause, count]) => {
+          catCauses[cause] = (catCauses[cause] || 0) + count;
+        });
+      });
+      const topCatCauses = Object.entries(catCauses)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, value]) => ({ name, value }));
+      pieCharts.push({ 
+        title: `${cat} Top 3 B/D`, 
+        data: topCatCauses, 
+        key: `${cat.toLowerCase()}-top` 
+      });
+    });
+
+    return { barCharts, lineCharts, mtbfChart, pieCharts, yAxisMax: maxYAxisValue };
   };
 
   const { barCharts, lineCharts, mtbfChart, pieCharts, yAxisMax } = processDataForCharts(sheetData);
 
   const COLORS = [
-    "#60A5FA", // bright blue
-    "#34D399", // emerald
-    "#FBBF24", // amber
-    "#F87171", // red
-    "#A78BFA", // purple
-    "#6EE7B7", // green
-    "#FCD34D", // yellow
-    "#93C5FD", // light blue
-    "#FB923C", // orange
-    "#4ADE80", // light green
-    "#F472B6", // pink
-    "#38BDF8", // sky blue
+    "#60A5FA", "#34D399", "#FBBF24", "#F87171",
+    "#A78BFA", "#6EE7B7", "#FCD34D", "#93C5FD",
+    "#FB923C", "#4ADE80", "#F472B6", "#38BDF8",
   ];
 
   return (
     <div className="min-h-screen bg-[#121212] animated-bg">
+      <style>{backgroundStyles}</style>
       <div className="animated-gradient"></div>
       <div className="animated-particles"></div>
       <div className="mx-auto max-w-7xl p-6 md:p-10 relative z-10">
@@ -644,21 +619,7 @@ pieCharts.push({
               <WifiOff className="w-5 h-5" />
               <span className="font-medium">Error</span>
             </div>
-            <p className="text-red-300 text-sm mt-1">{errorMessage.split('\n')[0]}</p>
-            {errorMessage.includes('\n') && (
-              <p className="text-red-300 text-xs mt-1">
-                {errorMessage.split('\n').slice(1).join('\n')}
-              </p>
-            )}
-            <p className="text-red-300 text-xs mt-2 opacity-80">
-              <strong>Troubleshooting:</strong> Make sure your Google Apps Script is:
-              <ul className="list-disc pl-5 mt-1 space-y-1">
-                <li>Deployed as a web app</li>
-                <li>Set to "Execute as: Me"</li>
-                <li>Set to "Who has access: Anyone"</li>
-                <li>Returning JSON or CSV data (not HTML)</li>
-              </ul>
-            </p>
+            <p className="text-red-300 text-sm mt-1">{errorMessage}</p>
             <button
               onClick={handleManualRefresh}
               className="mt-3 text-red-400 text-sm font-medium hover:text-red-300 glow-text"
@@ -671,119 +632,94 @@ pieCharts.push({
         {/* Charts Section */}
         {sheetData.length > 0 && (
           <div className="space-y-8 mb-6">
-            {/* Row 1: Bar Charts - Overall Plant B/D, IMM B/D, SPM B/D, ASSY B/D */}
-<div className="mb-2">
-  <h2 className="text-xl font-semibold text-white mb-4 glow-text">Breakdown Data</h2>
-  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-    {barCharts.map((chart, index) => (
-      <div
-        key={chart.key}
-        className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift"
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <BarChart3 className="w-4 h-4 text-[#A0AEC0]" />
-          <h3 className="text-sm font-semibold text-white glow-text">
-            {chart.title}
-          </h3>
-        </div>
-        <ResponsiveContainer width="100%" height={180}>
-  {chart.isOverallChart ? (
-    // Single bar chart for Overall Plant B/D
-    <RechartsBarChart data={chart.data}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
-      <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-      <YAxis
-        tick={{fill: '#A0AEC0', fontSize: 10}}
-        domain={[0, yAxisMax]}
-        ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))}
-      />
-      <Tooltip
-        contentStyle={{
-          backgroundColor: '#2D3748',
-          border: '1px solid #4A5568',
-          borderRadius: '6px',
-          color: '#E2E8F0',
-          fontSize: '12px',
-          padding: '8px 12px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-          zIndex: 9999,
-          maxWidth: '200px'
-        }}
-        wrapperStyle={{
-          zIndex: 9999,
-          pointerEvents: 'none'
-        }}
-        position={{ x: undefined, y: undefined }}
-        allowEscapeViewBox={{ x: false, y: false }}
-        content={({ active, payload, label }) => {
-          if (active && payload && payload.length) {
-            const data = payload[0].payload;
-            return (
-              <div style={{
-                backgroundColor: '#2D3748',
-                border: '1px solid #4A5568',
-                borderRadius: '6px',
-                padding: '8px 12px',
-                fontSize: '12px',
-                color: '#E2E8F0',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                maxWidth: '180px'
-              }}>
-                <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>{label}</p>
-                <p style={{ margin: '2px 0', color: '#60A5FA' }}>
-                  Total: {data.IMM + data.SPM + data.ASSY}
-                </p>
-                <div style={{ fontSize: '11px', color: '#A0AEC0' }}>
-                  <div>IMM: {data.IMM}</div>
-                  <div>SPM: {data.SPM}</div>
-                  <div>ASSY: {data.ASSY}</div>
-                </div>
+            {/* Row 1: Bar Charts */}
+            <div className="mb-2">
+              <h2 className="text-xl font-semibold text-white mb-4 glow-text">Breakdown Data</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                {barCharts.map((chart, index) => (
+                  <div
+                    key={chart.key}
+                    className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift"
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <BarChart3 className="w-4 h-4 text-[#A0AEC0]" />
+                      <h3 className="text-sm font-semibold text-white glow-text">
+                        {chart.title}
+                      </h3>
+                    </div>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <RechartsBarChart data={chart.data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
+                        <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
+                        <YAxis
+                          tick={{fill: '#A0AEC0', fontSize: 10}}
+                          domain={[0, yAxisMax]}
+                          ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#2D3748',
+                            border: '1px solid #4A5568',
+                            borderRadius: '6px',
+                            color: '#E2E8F0',
+                            fontSize: '12px',
+                            padding: '8px 12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                          }}
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              if (chart.isOverallChart) {
+                                return (
+                                  <div style={{
+                                    backgroundColor: '#2D3748',
+                                    border: '1px solid #4A5568',
+                                    borderRadius: '6px',
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    color: '#E2E8F0',
+                                  }}>
+                                    <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>{label}</p>
+                                    <p style={{ margin: '2px 0', color: '#60A5FA' }}>
+                                      Total: {data.IMM + data.SPM + data.ASSY}
+                                    </p>
+                                    <div style={{ fontSize: '11px', color: '#A0AEC0' }}>
+                                      <div>IMM: {data.IMM}</div>
+                                      <div>SPM: {data.SPM}</div>
+                                      <div>ASSY: {data.ASSY}</div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div style={{
+                                  backgroundColor: '#2D3748',
+                                  border: '1px solid #4A5568',
+                                  borderRadius: '6px',
+                                  padding: '6px 10px',
+                                  fontSize: '12px',
+                                  color: '#E2E8F0',
+                                }}>
+                                  <p>{label}: {Math.round(data.value)}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar 
+                          dataKey="value" 
+                          fill={COLORS[index % COLORS.length]} 
+                          barSize={20} 
+                        />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ))}
               </div>
-            );
-          }
-          return null;
-        }}
-      />
-      <Bar dataKey="value" fill="#60A5FA" barSize={20} />
-    </RechartsBarChart>
-  ) : (
-    // Individual charts for IMM, SPM, ASSY
-    <RechartsBarChart data={chart.data}>
-      <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
-      <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-      <YAxis
-        tick={{fill: '#A0AEC0', fontSize: 10}}
-        domain={[0, yAxisMax]}
-        ticks={Array.from({length: 6}, (_, i) => Math.round(i * yAxisMax / 5))}
-      />
-      <Tooltip
-        contentStyle={{
-          backgroundColor: '#2D3748',
-          border: '1px solid #4A5568',
-          borderRadius: '6px',
-          color: '#E2E8F0',
-          fontSize: '12px',
-          padding: '6px 10px',
-          zIndex: 9999
-        }}
-        wrapperStyle={{
-          zIndex: 9999,
-          pointerEvents: 'none'
-        }}
-        formatter={(value, name) => [`${Math.round(value)}`, name]}
-      />
-      <Bar dataKey="value" fill={COLORS[index % COLORS.length]} barSize={20} />
-    </RechartsBarChart>
-  )}
-</ResponsiveContainer>
+            </div>
 
-      </div>
-    ))}
-  </div>
-</div>
-
-
-            {/* Row 2: Line Charts - Overall MTTR, IMM MTTR, SPM MTTR, ASSY MTTR */}
+            {/* Row 2: MTTR Charts */}
             <div className="mb-2">
               <h2 className="text-xl font-semibold text-white mb-4 glow-text">MTTR Trends</h2>
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -799,32 +735,41 @@ pieCharts.push({
                       </h3>
                     </div>
                     <ResponsiveContainer width="100%" height={180}>
-                      <RechartsBarChart data={chart.data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
-                        <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-                        <YAxis tick={{fill: '#A0AEC0', fontSize: 10}} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '6px', color: '#E2E8F0' }}
-                          formatter={(value, name, props) => [props.payload.formattedValue || `${Math.round(value)} min/BD`, name]}
-                        />
-                        <Bar 
-                          dataKey="value" 
-                          fill={COLORS[index % COLORS.length]} 
-                          animationDuration={1000}
-                          barSize={20}
-                        />
-                      </RechartsBarChart>
-                    </ResponsiveContainer>
+  <LineChart data={chart.data}>
+    <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
+    <XAxis dataKey="name" tick={{ fill: '#A0AEC0', fontSize: 10 }} />
+    <YAxis tick={{ fill: '#A0AEC0', fontSize: 10 }} domain={[0, 'dataMax + 10']} />
+    <Tooltip
+      contentStyle={{
+        backgroundColor: '#2D3748',
+        border: '1px solid #4A5568',
+        borderRadius: '6px',
+        color: '#E2E8F0',
+      }}
+      formatter={(value, name, props) => [
+        props.payload.formattedValue, chart.title
+      ]}
+    />
+    <Line
+      type="monotone"
+      dataKey="value"
+      stroke={COLORS[index % COLORS.length]}
+      strokeWidth={2}
+      dot={{ r: 3, fill: COLORS[index % COLORS.length], strokeWidth: 1 }}
+      activeDot={{ r: 5 }}
+    />
+  </LineChart>
+</ResponsiveContainer>
+
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Row 3: MTBF Line Chart + Placeholders */}
+            {/* Row 3: MTBF Chart + Placeholders */}
             <div className="mb-2">
               <h2 className="text-xl font-semibold text-white mb-4 glow-text">MTBF & Additional Metrics</h2>
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {/* MTBF Chart */}
                 <div className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift">
                   <div className="flex items-center gap-2 mb-3">
                     <Clock className="w-4 h-4 text-[#A0AEC0]" />
@@ -836,10 +781,21 @@ pieCharts.push({
                     <RechartsBarChart data={mtbfChart.data}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#4B5563" opacity={0.3} />
                       <XAxis dataKey="name" tick={{fill: '#A0AEC0', fontSize: 10}} />
-                      <YAxis tick={{fill: '#A0AEC0', fontSize: 10}} domain={[0, 500]} ticks={[0, 100, 200, 300, 400, 500]} />
+                      <YAxis 
+                        tick={{fill: '#A0AEC0', fontSize: 10}} 
+                        domain={[0, 500]} 
+                        ticks={[0, 100, 200, 300, 400, 500]} 
+                      />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568', borderRadius: '6px', color: '#E2E8F0' }}
-                        formatter={(value, name, props) => [props.payload.formattedValue || `${Math.round(value)} min/BD`, name]}
+                        contentStyle={{ 
+                          backgroundColor: '#2D3748', 
+                          border: '1px solid #4A5568', 
+                          borderRadius: '6px', 
+                          color: '#E2E8F0' 
+                        }}
+                        formatter={(value, name, props) => [
+                          props.payload.formattedValue, mtbfChart.title
+                        ]}
                       />
                       <Bar 
                         dataKey="value" 
@@ -851,7 +807,6 @@ pieCharts.push({
                   </ResponsiveContainer>
                 </div>
                 
-                {/* Placeholders for IMM, SPM, ASSY extra data */}
                 {["IMM", "SPM", "ASSY"].map((area, index) => (
                   <div 
                     key={`placeholder-${index}`}
@@ -871,11 +826,11 @@ pieCharts.push({
               </div>
             </div>
 
-            {/* Row 4: Pie Charts - Top 3 B/D Week 1, Week 2, Week 3 + Placeholder */}
+            {/* Row 4: Pie Charts */}
             <div className="mb-2">
               <h2 className="text-xl font-semibold text-white mb-4 glow-text">Breakdown Distribution</h2>
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                {pieCharts.map((chart, index) => (
+                {pieCharts.slice(0, 4).map((chart, index) => (
                   <div
                     key={chart.key}
                     className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift"
@@ -886,54 +841,56 @@ pieCharts.push({
                         {chart.title}
                       </h3>
                     </div>
-                    {chart.data.length > 0 ? (
+                    {chart.data && chart.data.length > 0 ? (
                       <ResponsiveContainer width="100%" height={180}>
                         <RechartsPieChart>
                           <Pie
-  data={chart.data}
-  cx="50%"
-  cy="50%"
-  outerRadius={60}
-  dataKey="value"
-  nameKey="name"
-  labelLine={false}
-  label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 12;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                            data={chart.data}
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={60}
+                            dataKey="value"
+                            nameKey="name"
+                            labelLine={false}
+                            label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
+                              const RADIAN = Math.PI / 180;
+                              const radius = outerRadius + 12;
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="#E2E8F0"
-        textAnchor={x > cx ? "start" : "end"}
-        dominantBaseline="central"
-        fontSize={10}
-      >
-        {`${name.length > 12 ? name.substring(0, 12) + "…" : name} ${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  }}
->
-  {chart.data.map((entry, i) => (
-    <Cell
-      key={`cell-${i}`}
-      fill={COLORS[i % COLORS.length]}
-    />
-  ))}
-</Pie>
-
-<Tooltip
-  formatter={(value, name, props) => [`${value} min`, props.payload.name]}
-  contentStyle={{
-    backgroundColor: '#2D3748',
-    border: '1px solid #4A5568',
-    borderRadius: '6px',
-    color: '#E2E8F0'
-  }}
-/>
+                              return (
+                                <text
+                                  x={x}
+                                  y={y}
+                                  fill="#E2E8F0"
+                                  textAnchor={x > cx ? "start" : "end"}
+                                  dominantBaseline="central"
+                                  fontSize={10}
+                                >
+                                  {`${name && name.length > 12 ? name.substring(0, 12) + "…" : name || 'Unknown'} ${(percent * 100).toFixed(0)}%`}
+                                </text>
+                              );
+                            }}
+                          >
+                            {chart.data.map((entry, i) => (
+                              <Cell
+                                key={`cell-${i}`}
+                                fill={COLORS[i % COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value, name, props) => [
+                              `${value} ${chart.title.includes('Plant') ? 'min' : 'count'}`, 
+                              props.payload.name || 'Unknown'
+                            ]}
+                            contentStyle={{
+                              backgroundColor: '#2D3748',
+                              border: '1px solid #4A5568',
+                              borderRadius: '6px',
+                              color: '#E2E8F0'
+                            }}
+                          />
                         </RechartsPieChart>
                       </ResponsiveContainer>
                     ) : (
@@ -942,10 +899,27 @@ pieCharts.push({
                           <PieChart className="w-8 h-8" />
                         </div>
                         <p className="text-xs text-[#718096] text-center">
-                          Placeholder for future data
+                          No data available
                         </p>
                       </div>
                     )}
+                  </div>
+                ))}
+                
+                {Array.from({ length: Math.max(0, 4 - pieCharts.length) }).map((_, index) => (
+                  <div 
+                    key={`pie-placeholder-${index}`}
+                    className="bg-[#1A202C] border border-gray-700 rounded-lg p-4 glass-card hover-lift flex flex-col items-center justify-center"
+                  >
+                    <div className="text-[#4A5568] mb-2">
+                      <PieChart className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-sm font-semibold text-[#A0AEC0] text-center">
+                      Additional Analysis
+                    </h3>
+                    <p className="text-xs text-[#718096] mt-2 text-center">
+                      Placeholder for future data
+                    </p>
                   </div>
                 ))}
               </div>
@@ -963,15 +937,15 @@ pieCharts.push({
               <MoreHorizontal className="w-[18px] h-[18px] text-[#A0AEC0] hover:text-white cursor-pointer" />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-96">
               <table className="w-full">
-                <thead>
-                  <tr className="bg-[#2D3748]">
+                <thead className="sticky top-0 bg-[#2D3748]">
+                  <tr>
                     {sheetData[0] &&
                       Object.keys(sheetData[0]).map((header, index) => (
                         <th
                           key={index}
-                          className="px-4 py-3 text-left text-xs font-medium text-[#A0AEC0] uppercase tracking-wider border-b border-gray-700"
+                          className="px-4 py-3 text-left text-xs font-medium text-[#A0AEC0] uppercase tracking-wider border-b border-gray-700 whitespace-nowrap"
                         >
                           {header}
                         </th>
@@ -982,12 +956,14 @@ pieCharts.push({
                   {sheetData.map((row, rowIndex) => (
                     <tr
                       key={rowIndex}
-                      className={`${rowIndex % 2 === 0 ? "bg-[#1A202C]" : "bg-[#2D3748]"} hover:bg-[#4A5568] transition-colors`}
+                      className={`${
+                        rowIndex % 2 === 0 ? "bg-[#1A202C]" : "bg-[#2D3748]"
+                      } hover:bg-[#4A5568] transition-colors`}
                     >
                       {Object.values(row).map((cell, cellIndex) => (
                         <td
                           key={cellIndex}
-                          className="px-4 py-3 text-sm text-[#E2E8F0] border-b border-gray-700"
+                          className="px-4 py-3 text-sm text-[#E2E8F0] border-b border-gray-700 whitespace-nowrap"
                         >
                           {cell || "-"}
                         </td>
@@ -1027,60 +1003,11 @@ pieCharts.push({
   );
 }
 
+// Main App Component
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <LiveDataDashboard />
     </QueryClientProvider>
-  );
-}
-
-export function MaintenanceTable() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("https://script.google.com/macros/s/AKfycbxT_VzkKxpOVgzvSpXf-ksaZ7mhPBEKORV4cnAOIPMYwbMmfUl0239W_rrT20NbIwX9HA/exec")
-      .then((res) => res.json())
-      .then((json) => {
-        setData(json.data || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Failed to fetch data");
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <div style={{padding:"2rem",textAlign:"center"}}>Loading data…</div>;
-  if (error) return <div style={{padding:"2rem",color:"red",textAlign:"center"}}>{error}</div>;
-  if (!data.length) return <div style={{padding:"2rem",textAlign:"center"}}>No data available.</div>;
-
-  const columns = Object.keys(data[0]);
-
-  return (
-    <div style={{padding:"2rem"}}>
-      <div style={{overflowX:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",boxShadow:"0 2px 8px #eee"}}>
-          <thead>
-            <tr>
-              {columns.map((col) => (
-                <th key={col} style={{background:"#f5f5f5",padding:"8px",borderBottom:"2px solid #ddd",textAlign:"left"}}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row, i) => (
-              <tr key={i} style={{background:i%2?"#fafafa":"#fff"}}>
-                {columns.map((col) => (
-                  <td key={col} style={{padding:"8px",borderBottom:"1px solid #eee"}}>{row[col]}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }
