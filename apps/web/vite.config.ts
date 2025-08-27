@@ -12,7 +12,7 @@ import { restart } from "./plugins/restart";
 import { restartEnvFileChange } from "./plugins/restartEnvFileChange";
 
 export default defineConfig({
-  root: ".", // root is apps/web (where index.html is)
+  root: ".", // apps/web
   envPrefix: "NEXT_PUBLIC_",
   optimizeDeps: {
     include: ["fast-glob", "lucide-react"],
@@ -75,12 +75,9 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
-    warmup: {
-      clientFiles: ["./src/app/**/*", "./src/app/root.tsx", "./src/app/routes.ts"],
-    },
   },
   build: {
-    outDir: "build/client",
+    outDir: "build",            // ✅ output directly to build (Vercel-friendly)
     emptyOutDir: true,
     rollupOptions: {
       input: resolve(__dirname, "index.html"), // use apps/web/index.html
